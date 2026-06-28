@@ -26,3 +26,17 @@ create policy "verejne_vkladani"
 
 -- 5) Zapnout realtime (živé výsledky)
 alter publication supabase_realtime add table public.votes;
+
+-- ============================================================
+-- 2. kolo: hlasování o oblíbenosti jména
+-- ============================================================
+create table if not exists public.name_votes (
+  id          bigint generated always as identity primary key,
+  category    text not null check (category in ('Kluk','Holka')),
+  name        text not null check (char_length(name) between 1 and 60),
+  created_at  timestamptz not null default now()
+);
+alter table public.name_votes enable row level security;
+create policy "names_verejne_cteni"    on public.name_votes for select to anon using (true);
+create policy "names_verejne_vkladani" on public.name_votes for insert to anon with check (true);
+alter publication supabase_realtime add table public.name_votes;

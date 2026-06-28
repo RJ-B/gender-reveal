@@ -139,6 +139,52 @@
   .confetti{position:fixed;top:-10px;font-size:20px;z-index:1;pointer-events:none;animation:fall linear forwards;}
   @keyframes fall{to{transform:translateY(105vh) rotate(540deg);opacity:.9;}}
   .err{color:#c0392b;font-size:13px;margin-top:12px;}
+  /* tlačítko na 2. kolo */
+  .next-btn{
+    width:100%;margin-top:20px;padding:14px;border:none;border-radius:16px;
+    font-size:16px;font-weight:bold;color:#fff;cursor:pointer;
+    background:linear-gradient(90deg,#7d5bff,#ff7eb6);
+    box-shadow:0 8px 20px rgba(125,91,255,.3);transition:transform .12s,filter .2s;
+  }
+  .next-btn:hover{transform:translateY(-2px);filter:brightness(1.05);}
+  /* 2. kolo – jména */
+  .names{display:none;margin-top:8px;}
+  .name-group{margin-bottom:24px;}
+  .name-group h2{
+    font-size:18px;margin:0 0 12px;display:flex;align-items:center;
+    justify-content:center;gap:8px;
+  }
+  .name-group.kluk h2{color:var(--kluk);}
+  .name-group.holka h2{color:var(--holka);}
+  .name-row{
+    position:relative;text-align:left;border:2px solid #eadfee;border-radius:14px;
+    padding:0;margin-bottom:10px;overflow:hidden;cursor:pointer;background:#fff;
+    transition:transform .12s,border-color .2s;width:100%;font:inherit;
+  }
+  .name-row:hover:not(.voted){transform:translateY(-2px);}
+  .name-row.kluk:hover:not(.voted){border-color:var(--kluk);}
+  .name-row.holka:hover:not(.voted){border-color:var(--holka);}
+  .name-row.voted{cursor:default;}
+  /* barevná výplň podle procent (animovaná) */
+  .name-fill{
+    position:absolute;top:0;left:0;height:100%;width:0;border-radius:12px;
+    transition:width .9s cubic-bezier(.2,.8,.2,1);opacity:.18;z-index:0;
+  }
+  .name-row.kluk .name-fill{background:var(--kluk);}
+  .name-row.holka .name-fill{background:var(--holka);}
+  .name-inner{
+    position:relative;z-index:1;display:flex;justify-content:space-between;
+    align-items:center;padding:14px 18px;font-size:17px;font-weight:bold;
+  }
+  .name-pct{
+    font-size:15px;opacity:0;transform:translateX(8px);
+    transition:opacity .5s,transform .5s;min-width:46px;text-align:right;
+  }
+  .name-row.kluk .name-pct{color:var(--kluk);}
+  .name-row.holka .name-pct{color:var(--holka);}
+  .revealed .name-pct{opacity:1;transform:translateX(0);}
+  .name-hint{font-size:13px;color:#b09bb0;text-align:center;margin:-4px 0 14px;}
+  .name-done{font-size:13px;color:#8a7e8a;text-align:center;margin-top:4px;}
 </style>
 </head>
 <body>
@@ -190,6 +236,29 @@
 
       <p class="sub" id="totalMsg"></p>
       <div class="voters" id="voters"></div>
+
+      <button class="next-btn" id="toNamesBtn">➡️ Hlasovat o jménu 👶</button>
+    </div>
+
+    <!-- 2. KOLO: HLASOVÁNÍ O JMÉNU -->
+    <div class="names" id="names">
+      <div class="emoji-top">📝</div>
+      <h1>Které jméno se ti líbí?</h1>
+      <p class="sub">Klikni na svého favorita – po potvrzení uvidíš oblíbenost všech jmen. 😍</p>
+
+      <div class="name-group kluk">
+        <h2>👦 Klučičí jména</h2>
+        <p class="name-hint" data-cat="Kluk">Klikni na jméno a hlasuj</p>
+        <div id="listKluk"></div>
+      </div>
+
+      <div class="name-group holka">
+        <h2>👧 Holčičí jména</h2>
+        <p class="name-hint" data-cat="Holka">Klikni na jméno a hlasuj</p>
+        <div id="listHolka"></div>
+      </div>
+
+      <div class="live-badge"><span class="live-dot"></span> ŽIVĚ – procenta se mění samy</div>
     </div>
   </div>
 
@@ -303,6 +372,114 @@
     .on('postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'votes' },
       (payload)=>{ votes.push(payload.new); render(); })
+    .subscribe();
+
+  // ====== 2. KOLO: HLASOVÁNÍ O JMÉNU ======
+  // ↓↓↓ TADY UPRAV SEZNAM JMEN ↓↓↓
+  const NAMES = {
+    Kluk:  ["Honza", "Pavel", "Tomáš", "Matěj"],
+    Holka: ["Eliška", "Anna", "Tereza", "Sofie"]
+  };
+  // ↑↑↑ stačí dopsat/smazat jména v uvozovkách ↑↑↑
+
+  let nameVotes = [];           // lokální kopie hlasů o jménech
+  const voted = {               // už jsem v dané kategorii hlasoval(a)?
+    Kluk:  localStorage.getItem('namevote_Kluk')  === '1',
+    Holka: localStorage.getItem('namevote_Holka') === '1'
+  };
+
+  // vykreslení řádků se jmény
+  function buildNameList(cat, containerId){
+    const box = document.getElementById(containerId);
+    box.innerHTML = '';
+    NAMES[cat].forEach(nm=>{
+      const row = document.createElement('button');
+      row.className = 'name-row ' + (cat==='Kluk'?'kluk':'holka');
+      row.dataset.cat = cat;
+      row.dataset.name = nm;
+      row.innerHTML =
+        `<span class="name-fill"></span>` +
+        `<span class="name-inner"><span>${escapeHtml(nm)}</span>` +
+        `<span class="name-pct">0 %</span></span>`;
+      row.addEventListener('click', ()=>voteName(cat, nm, row));
+      box.appendChild(row);
+    });
+  }
+
+  async function voteName(cat, nm, row){
+    if(voted[cat]) return;  // v této kategorii už hlasoval(a)
+    if(!confirm(`Hlasuješ pro jméno „${nm}"?`)) return;
+
+    try{
+      const { error } = await supabase
+        .from('name_votes')
+        .insert({ category: cat, name: nm });
+      if(error) throw error;
+      voted[cat] = true;
+      localStorage.setItem('namevote_'+cat, '1');
+      lockCategory(cat);
+      // počká na realtime, ale pro jistotu hned překreslíme
+    }catch(e){
+      alert('Hups, hlas se nepodařilo odeslat. Zkus to prosím znovu.');
+      console.error(e);
+    }
+  }
+
+  // po odhlasování v kategorii: odhalit procenta a zamknout řádky
+  function lockCategory(cat){
+    const hint = document.querySelector(`.name-hint[data-cat="${cat}"]`);
+    if(hint) hint.textContent = 'Díky za hlas! Tady je oblíbenost jmen:';
+    document.querySelectorAll(`.name-row[data-cat="${cat}"]`).forEach(r=>{
+      r.classList.add('voted','revealed');
+    });
+    renderNames();
+  }
+
+  // přepočet a animace procent (per kategorie zvlášť → 100 %)
+  function renderNames(){
+    ['Kluk','Holka'].forEach(cat=>{
+      const rows = nameVotes.filter(v=>v.category===cat);
+      const total = rows.length;
+      document.querySelectorAll(`.name-row[data-cat="${cat}"]`).forEach(r=>{
+        const cnt = rows.filter(v=>v.name===r.dataset.name).length;
+        const pct = total ? Math.round(cnt/total*100) : 0;
+        // procenta a výplň ukážeme jen když už v kategorii hlasoval(a)
+        if(voted[cat]){
+          r.classList.add('revealed');
+          r.querySelector('.name-fill').style.width = pct+'%';
+          r.querySelector('.name-pct').textContent = pct+' %';
+        }
+      });
+    });
+  }
+
+  // načtení stávajících hlasů o jménech
+  async function loadNameVotes(){
+    const { data, error } = await supabase
+      .from('name_votes')
+      .select('category,name,created_at');
+    if(!error && data){ nameVotes = data; renderNames(); }
+  }
+
+  // přepnutí na 2. kolo
+  document.getElementById('toNamesBtn').addEventListener('click', ()=>{
+    document.getElementById('results').style.display='none';
+    document.getElementById('names').style.display='block';
+    buildNameList('Kluk','listKluk');
+    buildNameList('Holka','listHolka');
+    // pokud už dřív hlasoval(a), rovnou odhalit
+    if(voted.Kluk)  lockCategory('Kluk');
+    if(voted.Holka) lockCategory('Holka');
+    loadNameVotes();
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  // realtime pro jména
+  supabase
+    .channel('names-live')
+    .on('postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'name_votes' },
+      (payload)=>{ nameVotes.push(payload.new); renderNames(); })
     .subscribe();
 
   function escapeHtml(s){
