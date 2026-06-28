@@ -118,6 +118,33 @@
   .cd-lbl{font-size:11px;color:#b09bb0;margin-top:4px;text-transform:uppercase;letter-spacing:.5px;}
   .cd-done{font-family:'Fredoka',sans-serif;font-size:18px;font-weight:700;color:#e0457a;}
 
+  /* reveal tlačítko + obrazovka */
+  .reveal-btn{
+    width:100%;margin-top:16px;font-family:'Fredoka',sans-serif;font-weight:700;font-size:21px;color:#fff;
+    border:none;border-radius:18px;padding:18px;cursor:pointer;
+    background:linear-gradient(90deg,#3d7fff,#ff5e98);background-size:200% 100%;
+    box-shadow:0 12px 28px rgba(120,110,200,.4);animation:revealpulse 1.6s ease-in-out infinite, sheen 3s linear infinite;
+  }
+  .reveal-btn:hover{transform:translateY(-2px);}
+  .reveal-locked{
+    width:100%;margin-top:16px;font-family:'Fredoka',sans-serif;font-weight:600;font-size:16px;color:#9a93ad;
+    border:2.5px dashed #ddd3e6;border-radius:18px;padding:15px;background:#faf8fc;cursor:not-allowed;
+  }
+  @keyframes revealpulse{0%,100%{transform:scale(1);}50%{transform:scale(1.03);}}
+  @keyframes sheen{to{background-position:200% 0;}}
+  #revealOverlay{
+    position:fixed;inset:0;z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;color:#fff;padding:24px;
+  }
+  #revealOverlay.show{display:flex;animation:pop .6s ease both;}
+  #revealOverlay.boy{background:radial-gradient(120% 120% at 50% 30%,#6db1ff,#3d7fff 70%);}
+  #revealOverlay.girl{background:radial-gradient(120% 120% at 50% 30%,#ff9ec4,#ff5e98 70%);}
+  #revealOverlay .rEmoji{font-size:110px;line-height:1;animation:floaty 3s ease-in-out infinite;}
+  #revealOverlay .rTitle{font-family:'Fredoka',sans-serif;font-weight:700;font-size:60px;margin:14px 0 6px;text-shadow:0 6px 24px rgba(0,0,0,.18);}
+  #revealOverlay .rSub{font-size:20px;font-weight:700;opacity:.95;}
+  #revealOverlay .rClose{margin-top:34px;font-family:'Fredoka',sans-serif;font-weight:600;font-size:17px;color:#fff;background:rgba(255,255,255,.22);border:2px solid rgba(255,255,255,.6);border-radius:16px;padding:12px 26px;cursor:pointer;}
+  @media(max-width:560px){#revealOverlay .rTitle{font-size:42px;}#revealOverlay .rEmoji{font-size:84px;}}
+
   .livebadge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#e0457a;background:#fff0f7;padding:4px 12px;border-radius:20px;margin-top:18px;}
   .live-dot{width:8px;height:8px;border-radius:50%;background:#e0457a;animation:pulse 1.2s infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
@@ -136,6 +163,14 @@
   <div id="bg"></div>
   <canvas id="confetti"></canvas>
 
+  <!-- REVEAL OVERLAY -->
+  <div id="revealOverlay">
+    <div class="rEmoji" id="rEmoji">🎉</div>
+    <div class="rTitle" id="rTitle"></div>
+    <div class="rSub" id="rSub"></div>
+    <button class="rClose" id="rClose">Zavřít</button>
+  </div>
+
   <!-- WELCOME -->
   <section class="screen active" id="scWelcome" style="max-width:520px;">
     <div class="card">
@@ -146,6 +181,7 @@
       <input type="text" id="voterName" placeholder="Tvoje jméno" maxlength="24" autocomplete="off">
       <div class="errline" id="welcomeErr"></div>
       <button class="btn" id="startBtn">Začít hlasovat →</button>
+      <button class="reveal-slot reveal-locked" disabled></button>
       <div class="note" id="welcomeNote" style="display:none;"></div>
     </div>
   </section>
@@ -193,6 +229,7 @@
       </div>
 
       <button class="btn" id="goNameBtn" style="margin-top:22px;">Teď vyber jméno →</button>
+      <button class="reveal-slot reveal-locked" disabled></button>
       <div><span class="livebadge"><span class="live-dot"></span> ŽIVĚ – aktualizuje se samo</span></div>
     </div>
   </section>
@@ -244,6 +281,7 @@
     </div>
 
     <div class="center"><span class="livebadge"><span class="live-dot"></span> ŽIVĚ – aktualizuje se samo</span></div>
+    <button class="reveal-slot reveal-locked" disabled></button>
     <button class="btn-ghost" id="restartBtn" style="margin-top:18px;">↺ Hlasovat znovu (další člověk)</button>
   </section>
 
@@ -420,17 +458,60 @@
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'name_votes'},
       p=>{ nameVotes.push(p.new); refreshCurrent(); }).subscribe();
 
-  // ---- ODPOČET ----
+  // ---- ODPOČET + ODEMČENÍ ODHALENÍ ----
+  const pad=n=>String(n).padStart(2,'0');
+  const revealLabel = `${REVEAL_DATE.getDate()}. ${REVEAL_DATE.getMonth()+1}. v ${REVEAL_DATE.getHours()}:${pad(REVEAL_DATE.getMinutes())}`;
+  let revealUnlocked=false;
+
+  function setRevealButtons(unlocked){
+    document.querySelectorAll('.reveal-slot').forEach(b=>{
+      if(unlocked){
+        b.classList.remove('reveal-locked'); b.classList.add('reveal-btn'); b.disabled=false;
+        b.textContent='🎉 Odhalit výsledek!';
+      } else {
+        b.classList.add('reveal-locked'); b.classList.remove('reveal-btn'); b.disabled=true;
+        b.textContent='🔒 Odhalení '+revealLabel;
+      }
+    });
+  }
+  document.querySelectorAll('.reveal-slot').forEach(b=>b.addEventListener('click',()=>{ if(revealUnlocked) doReveal(); }));
+  setRevealButtons(false);
+
   function tickCountdown(){
     const diff = REVEAL_DATE - new Date();
     document.querySelectorAll('.cd-instance').forEach(grid=>{
-      if(diff<=0){ grid.innerHTML='<div class="cd-done">🎉 Dnes je odhalení! 🎉</div>'; return; }
+      if(diff<=0){ grid.innerHTML='<div class="cd-done">🎉 Je čas na odhalení! 🎉</div>'; return; }
       const d=Math.floor(diff/86400000), h=Math.floor(diff%86400000/3600000), m=Math.floor(diff%3600000/60000), s=Math.floor(diff%60000/1000);
       const set=(c,v)=>{ const el=grid.querySelector(c); if(el) el.textContent=v; };
-      set('.cd-d',d); set('.cd-h',String(h).padStart(2,'0')); set('.cd-m',String(m).padStart(2,'0')); set('.cd-s',String(s).padStart(2,'0'));
+      set('.cd-d',d); set('.cd-h',pad(h)); set('.cd-m',pad(m)); set('.cd-s',pad(s));
     });
+    const unlocked = diff<=0;
+    if(unlocked!==revealUnlocked){ revealUnlocked=unlocked; setRevealButtons(unlocked); }
   }
   tickCountdown(); setInterval(tickCountdown,1000);
+
+  // ---- ODHALENÍ VÝSLEDKU (spoiler-proof přes serverovou funkci) ----
+  async function doReveal(){
+    try{
+      const { data, error } = await supabase.rpc('get_reveal');
+      if(error) throw error;
+      if(data && data.status==='revealed') showReveal(data.result);
+      else if(data && data.status==='not_set') alert('Výsledek zatím nebyl zadán 🤫 Zkus to prosím za chvíli.');
+      else alert('Odhalení ještě nezačalo 🙂');
+    }catch(e){ console.error(e); alert('Výsledek se nepodařilo načíst, zkus to prosím znovu.'); }
+  }
+  function showReveal(result){
+    const boy = result==='Kluk';
+    const ov=$('#revealOverlay');
+    ov.classList.remove('boy','girl');
+    ov.classList.add(boy?'boy':'girl','show');
+    $('#rEmoji').textContent = boy?'💙':'💖';
+    $('#rTitle').textContent = boy?'JE TO KLUK!':'JE TO HOLKA!';
+    $('#rSub').textContent = 'Gratulujeme! 🎉';
+    const cols = boy?['#6db1ff','#3d7fff','#bcdcff','#ffffff']:['#ff9ec4','#ff5e98','#ffd0e2','#ffffff'];
+    setTimeout(()=>launchConfetti(cols),120);
+  }
+  $('#rClose').addEventListener('click',()=>$('#revealOverlay').classList.remove('show'));
 
   // ---- PLOVOUCÍ POZADÍ ----
   (function spawnBg(){

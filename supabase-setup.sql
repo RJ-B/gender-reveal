@@ -40,3 +40,39 @@ alter table public.name_votes enable row level security;
 create policy "names_verejne_cteni"    on public.name_votes for select to anon using (true);
 create policy "names_verejne_vkladani" on public.name_votes for insert to anon with check (true);
 alter publication supabase_realtime add table public.name_votes;
+
+-- ============================================================
+-- Skutečný výsledek (spoiler-proof) – vydá se až po čase odhalení
+-- ============================================================
+create table if not exists public.reveal (
+  id        int primary key default 1,
+  result    text check (result in ('Kluk','Holka')),
+  reveal_at timestamptz not null default '2026-08-31 17:00:00+02',
+  constraint reveal_single_row check (id = 1)
+);
+insert into public.reveal (id, result, reveal_at)
+  values (1, null, '2026-08-31 17:00:00+02')
+  on conflict (id) do nothing;
+
+-- RLS bez anon práv = anon NEMŮŽE číst tabulku přímo (žádný spoiler přes API)
+alter table public.reveal enable row level security;
+
+-- Funkce vydá výsledek AŽ po čase odhalení (jinak 'locked' / 'not_set')
+create or replace function public.get_reveal()
+returns json
+language sql
+security definer
+set search_path = public
+as $$
+  select case
+    when now() < r.reveal_at then json_build_object('status','locked','reveal_at', r.reveal_at)
+    when r.result is null     then json_build_object('status','not_set','reveal_at', r.reveal_at)
+    else json_build_object('status','revealed','result', r.result,'reveal_at', r.reveal_at)
+  end
+  from public.reveal r where r.id = 1;
+$$;
+revoke all on function public.get_reveal() from public;
+grant execute on function public.get_reveal() to anon;
+
+-- Nastavení výsledku (spustí jen vlastník přes SQL editor / CLI):
+--   update public.reveal set result = 'Holka' where id = 1;   -- nebo 'Kluk'
