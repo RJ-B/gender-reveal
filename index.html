@@ -64,6 +64,8 @@
   }
   .btn-ghost:hover{background:#faf6ff;}
   .note{margin-top:16px;font-size:13px;font-weight:700;color:#9a93ad;}
+  .field-label{text-align:left;font-family:'Fredoka',sans-serif;font-weight:600;font-size:14px;color:#6b6480;margin:0 0 6px;}
+  .field-hint{font-family:'Nunito',sans-serif;font-weight:700;font-size:12px;color:#b09bb0;}
 
   /* gender vote cards */
   .pair{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
@@ -191,7 +193,8 @@
       <div class="eyebrow brand">Gender reveal</div>
       <h1>Kluk nebo holka?</h1>
       <p class="lead">Zahlasuj, jak to podle tebe dopadne — a vyber i jméno pro miminko!</p>
-      <input type="text" id="voterName" placeholder="Tvoje jméno" maxlength="24" autocomplete="off">
+      <div class="field-label">Tvoje jméno <span class="field-hint">(kdo hlasuje – ne jméno miminka)</span></div>
+      <input type="text" id="voterName" placeholder="Zadejte své jméno" maxlength="24" autocomplete="off">
       <div class="errline" id="welcomeErr"></div>
       <button class="btn" id="startBtn">Začít hlasovat →</button>
       <button class="reveal-slot reveal-locked" disabled></button>
@@ -256,7 +259,7 @@
   <!-- NAME VOTE -->
   <section class="screen" id="scNameVote" style="max-width:720px;">
     <h2 class="center">Vyber jméno pro miminko</h2>
-    <p class="lead center">Můžeš vybrat klidně víc jmen – pro kluka i pro holku 💭</p>
+    <p class="lead center">Vyber aspoň jedno jméno pro kluka i pro holku (klidně víc) 💭</p>
     <div class="namecols">
       <div class="namebox boy">
         <h3>💙 Kdyby kluk</h3>
@@ -416,7 +419,7 @@
 
   $('#submitNamesBtn').addEventListener('click', submitNames);
   async function submitNames(){
-    if(st.pickBoys.length===0 && st.pickGirls.length===0){ $('#nameErr').textContent='Vyber prosím aspoň jedno jméno (klidně víc 🙂).'; return; }
+    if(st.pickBoys.length===0 || st.pickGirls.length===0){ $('#nameErr').textContent='Vyber prosím aspoň jedno jméno pro kluka i pro holku.'; return; }
     const btn=$('#submitNamesBtn'); btn.disabled=true;
     const voter = st.voterName.trim() || null;
     const rows = [
