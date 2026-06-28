@@ -47,6 +47,15 @@
   .row .what.boy{color:#3d7fff;} .row .what.girl{color:#ff5e98;}
   .row .when{color:#b3acc2;font-size:12px;font-weight:700;margin-left:10px;white-space:nowrap;}
   .muted{color:#9a93ad;font-weight:700;font-size:14px;padding:10px 0;}
+  /* tabulka kdo jak hlasoval */
+  .tablewrap{overflow-x:auto;}
+  .atable{width:100%;border-collapse:collapse;font-size:14px;}
+  .atable th{text-align:left;font-family:'Fredoka',sans-serif;font-weight:700;color:#6b6480;font-size:13px;padding:9px 10px;border-bottom:2px solid #eee;white-space:nowrap;}
+  .atable td{padding:10px;border-bottom:1px solid #f1ecf5;vertical-align:top;}
+  .atable .who{font-weight:800;white-space:nowrap;}
+  .t-boy{color:#3d7fff;font-weight:800;}
+  .t-girl{color:#ff5e98;font-weight:800;}
+  .muted2{color:#c4bdd2;font-weight:700;}
   /* charts */
   .splitbar{display:flex;height:56px;border-radius:16px;overflow:hidden;box-shadow:inset 0 0 0 3px #fff;background:#eee;margin-bottom:10px;}
   .splitbar .seg{display:flex;align-items:center;justify-content:center;transition:width .7s cubic-bezier(.2,.8,.2,1);min-width:0;}
@@ -92,10 +101,7 @@
       <div class="card">
         <!-- TAB 1 -->
         <div class="pane active" id="paneList">
-          <div class="sec-title">💭 Tipy na pohlaví</div>
-          <div id="genderList"></div>
-          <div class="sec-title">📝 Tipy na jména</div>
-          <div id="nameList"></div>
+          <div class="tablewrap"><table class="atable" id="voteTable"></table></div>
         </div>
 
         <!-- TAB 2 -->
@@ -164,20 +170,20 @@
     const total=(d.boy||0)+(d.girl||0);
     $('#totalLine').textContent = `Celkem hlasů o pohlaví: ${total} · tipů na jména: ${(d.names||[]).length}`;
 
-    // --- TAB 1: kdo jak hlasoval ---
-    const g=d.gender||[];
-    $('#genderList').innerHTML = g.length ? g.map(v=>{
-      const boy=v.choice==='Kluk';
-      return `<div class="row"><span class="who">${esc(v.name)}</span>
-        <span><span class="what ${boy?'boy':'girl'}">${boy?'💙 Kluk':'💖 Holka'}</span><span class="when">${fmt(v.at)}</span></span></div>`;
-    }).join('') : '<div class="muted">Zatím žádné hlasy.</div>';
-
-    const n=d.names||[];
-    $('#nameList').innerHTML = n.length ? n.map(v=>{
-      const boy=v.category==='Kluk';
-      return `<div class="row"><span class="who">${esc(v.voter||'—')}</span>
-        <span><span class="what ${boy?'boy':'girl'}">${esc(v.name)} ${boy?'💙':'💖'}</span><span class="when">${fmt(v.at)}</span></span></div>`;
-    }).join('') : '<div class="muted">Zatím žádné tipy na jména.</div>';
+    // --- TAB 1: tabulka kdo jak hlasoval (1 řádek na člověka) ---
+    const g=d.gender||[], n=d.names||[];
+    const map=new Map();
+    const ensure=k=>{ if(!map.has(k)) map.set(k,{voter:k,choice:null,girls:[],boys:[],at:0}); return map.get(k); };
+    g.forEach(v=>{ const r=ensure(v.name); if(!r.choice) r.choice=v.choice; r.at=Math.max(r.at, +new Date(v.at)||0); });
+    n.forEach(v=>{ const r=ensure(v.voter||'(bez jména)'); (v.category==='Holka'?r.girls:r.boys).push(v.name); r.at=Math.max(r.at, +new Date(v.at)||0); });
+    const rows=[...map.values()].sort((a,b)=>b.at-a.at);
+    const tip=c=> c==='Kluk' ? '<span class="t-boy">💙 Kluk</span>' : c==='Holka' ? '<span class="t-girl">💖 Holka</span>' : '<span class="muted2">—</span>';
+    const lst=(arr,cls)=> arr.length ? `<span class="${cls}">${arr.map(esc).join(', ')}</span>` : '<span class="muted2">—</span>';
+    $('#voteTable').innerHTML =
+      `<thead><tr><th>Jméno</th><th>Tip</th><th>Holčičí jména</th><th>Klučičí jména</th></tr></thead><tbody>`+
+      (rows.length ? rows.map(r=>
+        `<tr><td class="who">${esc(r.voter)}</td><td>${tip(r.choice)}</td><td>${lst(r.girls,'t-girl')}</td><td>${lst(r.boys,'t-boy')}</td></tr>`
+      ).join('') : `<tr><td colspan="4" class="muted">Zatím žádné hlasy.</td></tr>`)+`</tbody>`;
 
     // --- TAB 2: grafy ---
     const boyC=d.boy||0, girlC=d.girl||0, tot=boyC+girlC;
