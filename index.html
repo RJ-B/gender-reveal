@@ -185,6 +185,25 @@
   .revealed .name-pct{opacity:1;transform:translateX(0);}
   .name-hint{font-size:13px;color:#b09bb0;text-align:center;margin:-4px 0 14px;}
   .name-done{font-size:13px;color:#8a7e8a;text-align:center;margin-top:4px;}
+  /* odpočet do odhalení */
+  .countdown{
+    background:linear-gradient(135deg,#eef6ff,#fff0f7);
+    border-radius:18px;padding:16px 14px;margin:0 0 22px;
+    border:1px solid #f0e2f0;
+  }
+  .countdown .cd-title{font-size:13px;font-weight:bold;color:#8a7e8a;margin-bottom:10px;}
+  .cd-grid{display:flex;justify-content:center;gap:8px;}
+  .cd-cell{
+    background:#fff;border-radius:12px;padding:8px 4px;min-width:60px;
+    box-shadow:0 4px 12px rgba(120,90,140,.08);
+  }
+  .cd-num{
+    font-size:26px;font-weight:bold;line-height:1;
+    background:linear-gradient(90deg,var(--kluk),var(--holka));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .cd-lbl{font-size:11px;color:#b09bb0;margin-top:4px;text-transform:uppercase;letter-spacing:.5px;}
+  .cd-done{font-size:18px;font-weight:bold;color:#e0457a;}
 </style>
 </head>
 <body>
@@ -223,6 +242,17 @@
     <div class="results" id="results">
       <div class="emoji-top">🎊</div>
       <div class="thanks" id="thanksMsg"></div>
+
+      <div class="countdown" id="countdown">
+        <div class="cd-title">⏳ Velké odhalení už za:</div>
+        <div class="cd-grid" id="cdGrid">
+          <div class="cd-cell"><div class="cd-num" id="cdD">0</div><div class="cd-lbl">dní</div></div>
+          <div class="cd-cell"><div class="cd-num" id="cdH">0</div><div class="cd-lbl">hodin</div></div>
+          <div class="cd-cell"><div class="cd-num" id="cdM">0</div><div class="cd-lbl">minut</div></div>
+          <div class="cd-cell"><div class="cd-num" id="cdS">0</div><div class="cd-lbl">sekund</div></div>
+        </div>
+      </div>
+
       <div class="live-badge"><span class="live-dot"></span> ŽIVĚ – aktualizuje se samo</div>
 
       <div class="bar-row">
@@ -486,6 +516,29 @@
     return String(s).replace(/[&<>"']/g, c =>
       ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
+
+  // ====== ODPOČET DO ODHALENÍ ======
+  // datum/čas odhalení – uprav podle potřeby
+  const REVEAL_DATE = new Date("2026-08-31T17:00:00");
+
+  function tickCountdown(){
+    const grid = document.getElementById('cdGrid');
+    const diff = REVEAL_DATE - new Date();
+    if(diff <= 0){
+      grid.innerHTML = '<div class="cd-done">🎉 Dnes je odhalení! 🎉</div>';
+      return;
+    }
+    const d = Math.floor(diff/86400000);
+    const h = Math.floor(diff%86400000/3600000);
+    const m = Math.floor(diff%3600000/60000);
+    const s = Math.floor(diff%60000/1000);
+    document.getElementById('cdD').textContent = d;
+    document.getElementById('cdH').textContent = String(h).padStart(2,'0');
+    document.getElementById('cdM').textContent = String(m).padStart(2,'0');
+    document.getElementById('cdS').textContent = String(s).padStart(2,'0');
+  }
+  tickCountdown();
+  setInterval(tickCountdown, 1000);
 
   function confetti(){
     const em = ['🎉','🎊','💙','💗','👶','⭐','🍼'];
