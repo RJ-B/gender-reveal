@@ -304,8 +304,9 @@
     <button class="btn-ghost" id="restartBtn" style="margin-top:18px;">↺ Hlasovat znovu (další člověk)</button>
   </section>
 
+<script src="./supabase.umd.js"></script>
 <script type="module">
-  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+  const { createClient } = window.supabase;
 
   // ====== SUPABASE ======
   const SUPABASE_URL = "https://pnartxkzsetuqoltdqpu.supabase.co";

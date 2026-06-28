@@ -114,8 +114,9 @@
     </div>
   </div>
 
+<script src="./supabase.umd.js"></script>
 <script type="module">
-  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+  const { createClient } = window.supabase;
   const SUPABASE_URL = "https://pnartxkzsetuqoltdqpu.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuYXJ0eGt6c2V0dXFvbHRkcXB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NDg3ODMsImV4cCI6MjA5ODIyNDc4M30.hULg5-8I4ZtPzYod1BjDpkRx0ahSvQlNPpAZAGFTEvQ";
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
