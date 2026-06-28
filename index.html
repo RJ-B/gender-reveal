@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kluk nebo holka? 🍼 Velká anketa!</title>
+<style>
+  :root{
+    --kluk:#5aa9ff;
+    --holka:#ff7eb6;
+    --bg1:#fff6fb;
+    --bg2:#eef6ff;
+    --text:#3a2f3a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:'Trebuchet MS','Segoe UI',system-ui,sans-serif;
+    color:var(--text);
+    background:linear-gradient(135deg,var(--bg1),var(--bg2));
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    overflow-x:hidden;
+  }
+  .card{
+    width:100%;
+    max-width:480px;
+    background:#fff;
+    border-radius:28px;
+    padding:32px 28px 36px;
+    box-shadow:0 20px 60px rgba(120,90,140,.18);
+    text-align:center;
+    position:relative;
+    z-index:2;
+  }
+  .emoji-top{font-size:54px;line-height:1;margin-bottom:6px;}
+  h1{
+    margin:0 0 4px;
+    font-size:28px;
+    background:linear-gradient(90deg,var(--kluk),var(--holka));
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+  .sub{margin:0 0 24px;color:#8a7e8a;font-size:15px;}
+  label{display:block;text-align:left;font-weight:bold;margin:0 0 6px;font-size:14px;}
+  input[type=text]{
+    width:100%;
+    padding:13px 16px;
+    border:2px solid #eadfee;
+    border-radius:14px;
+    font-size:16px;
+    margin-bottom:22px;
+    outline:none;
+    transition:border-color .2s;
+  }
+  input[type=text]:focus{border-color:var(--holka);}
+  .options{display:flex;flex-direction:column;gap:12px;margin-bottom:24px;}
+  .opt{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:16px 18px;
+    border:2px solid #eadfee;
+    border-radius:16px;
+    cursor:pointer;
+    font-size:17px;
+    font-weight:bold;
+    transition:transform .12s,border-color .2s,background .2s;
+    user-select:none;
+  }
+  .opt:hover{transform:translateY(-2px);}
+  .opt .big{font-size:26px;}
+  .opt.kluk.sel{border-color:var(--kluk);background:#eef6ff;}
+  .opt.holka.sel{border-color:var(--holka);background:#fff0f7;}
+  .opt input{display:none;}
+  .opt.disabled{
+    cursor:not-allowed;
+    opacity:.6;
+    background:#f7f4f7;
+    position:relative;
+  }
+  .opt.disabled:hover{transform:none;}
+  .opt.disabled .tag{
+    margin-left:auto;
+    font-size:11px;
+    font-weight:bold;
+    color:#b09bb0;
+    border:1px dashed #cdbccd;
+    padding:3px 8px;
+    border-radius:20px;
+  }
+  .shake{animation:shake .4s;}
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    20%,60%{transform:translateX(-6px);}
+    40%,80%{transform:translateX(6px);}
+  }
+  button.send{
+    width:100%;
+    padding:15px;
+    border:none;
+    border-radius:16px;
+    font-size:17px;
+    font-weight:bold;
+    color:#fff;
+    background:linear-gradient(90deg,var(--kluk),var(--holka));
+    cursor:pointer;
+    box-shadow:0 8px 20px rgba(255,126,182,.35);
+    transition:transform .12s,filter .2s;
+  }
+  button.send:hover{transform:translateY(-2px);filter:brightness(1.05);}
+  button.send:active{transform:translateY(0);}
+  button.send:disabled{opacity:.6;cursor:wait;}
+  .joke{margin-top:14px;font-size:13px;color:#b09bb0;min-height:18px;}
+  /* výsledky */
+  .results{display:none;margin-top:8px;}
+  .live-badge{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:12px;font-weight:bold;color:#e0457a;
+    background:#fff0f7;padding:4px 12px;border-radius:20px;margin-bottom:14px;
+  }
+  .live-dot{width:8px;height:8px;border-radius:50%;background:#e0457a;animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+  .bar-row{text-align:left;margin-bottom:14px;}
+  .bar-label{display:flex;justify-content:space-between;font-size:13px;font-weight:bold;margin-bottom:5px;}
+  .bar{height:26px;background:#f0e8f0;border-radius:13px;overflow:hidden;}
+  .bar span{display:block;height:100%;width:0;border-radius:13px;transition:width .8s cubic-bezier(.2,.8,.2,1);}
+  .bar.kluk span{background:var(--kluk);}
+  .bar.holka span{background:var(--holka);}
+  .thanks{font-size:18px;font-weight:bold;margin:6px 0 18px;}
+  .voters{text-align:left;font-size:13px;color:#8a7e8a;margin-top:14px;max-height:150px;overflow-y:auto;}
+  .voters div{padding:3px 0;border-bottom:1px solid #f3edf3;}
+  .voters .b{color:var(--kluk);font-weight:bold;}
+  .voters .h{color:var(--holka);font-weight:bold;}
+  .confetti{position:fixed;top:-10px;font-size:20px;z-index:1;pointer-events:none;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(105vh) rotate(540deg);opacity:.9;}}
+  .err{color:#c0392b;font-size:13px;margin-top:12px;}
+</style>
+</head>
+<body>
+  <div class="card">
+    <!-- FORMULÁŘ -->
+    <div id="form">
+      <div class="emoji-top">🍼👶🎀</div>
+      <h1>Kluk nebo holka?</h1>
+      <p class="sub">Tipni si a hlasuj! Ať žije největší rodinná hádka. 😄</p>
+
+      <label for="name">Tvoje jméno</label>
+      <input type="text" id="name" placeholder="Třeba teta Jana...">
+
+      <div class="options">
+        <label class="opt kluk" data-val="Kluk">
+          <span class="big">👦</span> Kluk
+          <input type="radio" name="vote" value="Kluk">
+        </label>
+
+        <label class="opt holka" data-val="Holka">
+          <span class="big">👧</span> Holka
+          <input type="radio" name="vote" value="Holka">
+        </label>
+
+        <div class="opt disabled" id="jokeOpt">
+          <span class="big">👽</span> Mimozemšťan
+          <span class="tag">vyprodáno</span>
+        </div>
+      </div>
+
+      <button class="send" id="sendBtn">Odeslat hlas 🎉</button>
+      <div class="joke" id="jokeMsg"></div>
+    </div>
+
+    <!-- VÝSLEDKY -->
+    <div class="results" id="results">
+      <div class="emoji-top">🎊</div>
+      <div class="thanks" id="thanksMsg"></div>
+      <div class="live-badge"><span class="live-dot"></span> ŽIVĚ – aktualizuje se samo</div>
+
+      <div class="bar-row">
+        <div class="bar-label"><span>👦 Kluk</span><span id="klukPct">0 %</span></div>
+        <div class="bar kluk"><span id="klukBar"></span></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label"><span>👧 Holka</span><span id="holkaPct">0 %</span></div>
+        <div class="bar holka"><span id="holkaBar"></span></div>
+      </div>
+
+      <p class="sub" id="totalMsg"></p>
+      <div class="voters" id="voters"></div>
+    </div>
+  </div>
+
+<script type="module">
+  import { createClient }
+    from "https://esm.sh/@supabase/supabase-js@2";
+
+  // ====== SEM PŘIJDE TVOJE SUPABASE NASTAVENÍ ======
+  const SUPABASE_URL = "https://pnartxkzsetuqoltdqpu.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuYXJ0eGt6c2V0dXFvbHRkcXB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NDg3ODMsImV4cCI6MjA5ODIyNDc4M30.hULg5-8I4ZtPzYod1BjDpkRx0ahSvQlNPpAZAGFTEvQ";
+  // =================================================
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let selected = null;
+  let myVoteShown = false;
+  let votes = [];   // lokální kopie hlasů pro vykreslení
+
+  // výběr možnosti
+  document.querySelectorAll('.opt:not(.disabled)').forEach(o=>{
+    o.addEventListener('click',()=>{
+      document.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel'));
+      o.classList.add('sel');
+      selected = o.dataset.val;
+    });
+  });
+
+  // vtipná nedostupná možnost
+  const jokes = [
+    'Mimozemšťan momentálně není skladem. 👽',
+    'Tuhle možnost zablokoval pan doktor. 🛸',
+    'Sorry, ufoni mají do porodnice zákaz. 🚫',
+    'Tahle varianta je jen pro VIP rodiče. 😎'
+  ];
+  document.getElementById('jokeOpt').addEventListener('click',function(){
+    this.classList.remove('shake');
+    void this.offsetWidth;
+    this.classList.add('shake');
+    document.getElementById('jokeMsg').textContent =
+      jokes[Math.floor(Math.random()*jokes.length)];
+  });
+
+  // odeslání
+  const sendBtn = document.getElementById('sendBtn');
+  sendBtn.addEventListener('click', async ()=>{
+    const name = document.getElementById('name').value.trim();
+    const msg = document.getElementById('jokeMsg');
+    if(!name){ msg.textContent='Napiš nejdřív svoje jméno. 🙂'; return; }
+    if(!selected){ msg.textContent='Vyber kluka nebo holku! (ufon se nepočítá 👽)'; return; }
+
+    sendBtn.disabled = true;
+    msg.textContent = '';
+    try{
+      const { error } = await supabase
+        .from('votes')
+        .insert({ name, choice: selected });
+      if(error) throw error;
+      confetti();
+      showResults(name, selected);
+    }catch(e){
+      msg.innerHTML = '<span class="err">Hups, hlas se nepodařilo odeslat. Zkus to prosím znovu.</span>';
+      sendBtn.disabled = false;
+      console.error(e);
+    }
+  });
+
+  function showResults(name, choice){
+    if(myVoteShown) return;
+    myVoteShown = true;
+    document.getElementById('form').style.display='none';
+    document.getElementById('results').style.display='block';
+    document.getElementById('thanksMsg').textContent =
+      `Díky, ${name}! Tvůj tip: ${choice === 'Kluk' ? '👦 Kluk' : '👧 Holka'}`;
+  }
+
+  // vykreslení výsledků z lokální kopie `votes`
+  function render(){
+    const k = votes.filter(v=>v.choice==='Kluk').length;
+    const h = votes.filter(v=>v.choice==='Holka').length;
+    const total = k+h;
+    const kp = total ? Math.round(k/total*100) : 0;
+    const hp = total ? 100-kp : 0;
+
+    document.getElementById('klukBar').style.width = kp+'%';
+    document.getElementById('holkaBar').style.width = hp+'%';
+    document.getElementById('klukPct').textContent = kp+' %';
+    document.getElementById('holkaPct').textContent = hp+' %';
+    document.getElementById('totalMsg').textContent =
+      `Celkem hlasů: ${total} (kluk ${k} · holka ${h})`;
+
+    const voters = document.getElementById('voters');
+    voters.innerHTML = votes
+      .slice()
+      .sort((a,b)=> new Date(b.created_at||0) - new Date(a.created_at||0))
+      .map(v=>`<div>${escapeHtml(v.name)} → <span class="${v.choice==='Kluk'?'b':'h'}">${v.choice==='Kluk'?'👦 kluk':'👧 holka'}</span></div>`)
+      .join('');
+  }
+
+  // načtení stávajících hlasů
+  async function loadVotes(){
+    const { data, error } = await supabase
+      .from('votes')
+      .select('name,choice,created_at');
+    if(!error && data){ votes = data; render(); }
+  }
+  loadVotes();
+
+  // ŽIVÉ výsledky – realtime odběr nových hlasů pro všechny
+  supabase
+    .channel('votes-live')
+    .on('postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'votes' },
+      (payload)=>{ votes.push(payload.new); render(); })
+    .subscribe();
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function confetti(){
+    const em = ['🎉','🎊','💙','💗','👶','⭐','🍼'];
+    for(let i=0;i<40;i++){
+      const c = document.createElement('div');
+      c.className='confetti';
+      c.textContent = em[Math.floor(Math.random()*em.length)];
+      c.style.left = Math.random()*100+'vw';
+      c.style.animationDuration = (2+Math.random()*2)+'s';
+      c.style.animationDelay = (Math.random()*0.5)+'s';
+      document.body.appendChild(c);
+      setTimeout(()=>c.remove(),4500);
+    }
+  }
+</script>
+</body>
+</html>
