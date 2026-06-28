@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Admin · Gender reveal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;font-family:'Nunito',system-ui,sans-serif;color:#41384f;
+    background:radial-gradient(120% 120% at 50% 0%, #fff7fb 0%, #f3f7ff 55%, #eef2fb 100%);
+    display:flex;align-items:flex-start;justify-content:center;padding:24px;
+  }
+  .wrap{width:100%;max-width:760px;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:30px;margin:0 0 2px;
+    background:linear-gradient(90deg,#4f9bff,#ff79ab);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .sub{color:#8a83a0;font-weight:700;font-size:13px;margin:0 0 22px;}
+  .card{background:#fff;border:3px solid #fff;border-radius:24px;box-shadow:0 18px 50px rgba(120,110,160,.18);padding:28px 26px;}
+  /* login */
+  .login{max-width:380px;margin:8vh auto 0;text-align:center;}
+  .login .emoji{font-size:48px;}
+  input[type=password]{width:100%;font-family:'Nunito';font-weight:800;font-size:24px;letter-spacing:.3em;text-align:center;
+    padding:14px;border:2.5px solid #e7def0;border-radius:16px;outline:none;margin:16px 0 6px;color:#3f3a52;}
+  input[type=password]:focus{border-color:#ff9ec4;}
+  .btn{width:100%;font-family:'Fredoka';font-weight:600;font-size:19px;color:#fff;border:none;border-radius:16px;padding:14px;cursor:pointer;
+    background:linear-gradient(90deg,#5aa0ff,#ff7aad);box-shadow:0 10px 22px rgba(120,110,200,.3);}
+  .btn:disabled{opacity:.6;cursor:wait;}
+  .err{min-height:20px;color:#ff5b8a;font-weight:700;font-size:13px;margin-top:10px;}
+  /* tabs */
+  .tabs{display:flex;gap:8px;margin-bottom:18px;}
+  .tab{flex:1;font-family:'Fredoka';font-weight:600;font-size:15px;padding:11px;border-radius:14px;border:2px solid #e7def0;background:#fff;color:#6b6480;cursor:pointer;}
+  .tab.active{background:linear-gradient(90deg,#5aa0ff,#ff7aad);color:#fff;border-color:transparent;}
+  .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .refresh{font-family:'Nunito';font-weight:800;font-size:13px;color:#6b6480;background:#f3eef8;border:none;border-radius:12px;padding:8px 14px;cursor:pointer;}
+  .pane{display:none;} .pane.active{display:block;}
+  /* lists */
+  .sec-title{font-family:'Fredoka';font-weight:700;font-size:16px;margin:18px 0 10px;}
+  .sec-title.boy{color:#3d7fff;} .sec-title.girl{color:#ff5e98;}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:10px 4px;border-bottom:1px solid #f1ecf5;font-size:15px;}
+  .row .who{font-weight:800;}
+  .row .what{font-weight:800;}
+  .row .what.boy{color:#3d7fff;} .row .what.girl{color:#ff5e98;}
+  .row .when{color:#b3acc2;font-size:12px;font-weight:700;margin-left:10px;white-space:nowrap;}
+  .muted{color:#9a93ad;font-weight:700;font-size:14px;padding:10px 0;}
+  /* charts */
+  .splitbar{display:flex;height:56px;border-radius:16px;overflow:hidden;box-shadow:inset 0 0 0 3px #fff;background:#eee;margin-bottom:10px;}
+  .splitbar .seg{display:flex;align-items:center;justify-content:center;transition:width .7s cubic-bezier(.2,.8,.2,1);min-width:0;}
+  .splitbar .seg.boy{background:linear-gradient(160deg,#6db1ff,#3d7fff);}
+  .splitbar .seg.girl{background:linear-gradient(160deg,#ff9ec4,#ff5e98);}
+  .splitbar .seg span{font-family:'Fredoka';font-weight:700;color:#fff;font-size:18px;}
+  .countrow{display:flex;justify-content:space-between;font-weight:800;margin-bottom:6px;}
+  .resrow{margin-bottom:12px;}
+  .resrow .rlabel{display:flex;justify-content:space-between;font-weight:800;font-size:14px;margin-bottom:5px;}
+  .resrow.boy .rlabel span:last-child{color:#3d7fff;} .resrow.girl .rlabel span:last-child{color:#ff5e98;}
+  .track{height:13px;border-radius:7px;overflow:hidden;background:#eef0f6;}
+  .resrow.girl .track{background:#f7eef2;}
+  .fill{height:100%;width:0;border-radius:7px;transition:width .8s cubic-bezier(.2,.8,.2,1);}
+  .resrow.boy .fill{background:linear-gradient(90deg,#6db1ff,#3d7fff);}
+  .resrow.girl .fill{background:linear-gradient(90deg,#ff9ec4,#ff5e98);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  @media(max-width:560px){.grid2{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- LOGIN -->
+    <div id="login" class="card login">
+      <div class="emoji">🔒</div>
+      <h1>Admin</h1>
+      <p class="sub">Zadej PIN pro přístup k výsledkům</p>
+      <input type="password" id="pin" inputmode="numeric" maxlength="12" placeholder="PIN" autocomplete="off">
+      <button class="btn" id="loginBtn">Přihlásit</button>
+      <div class="err" id="loginErr"></div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dash" style="display:none;">
+      <div class="head">
+        <div><h1>Admin · výsledky</h1><p class="sub" id="totalLine"></p></div>
+        <button class="refresh" id="refreshBtn">↻ Obnovit</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-pane="paneList">🧾 Kdo jak hlasoval</button>
+        <button class="tab" data-pane="paneCharts">📊 Grafy</button>
+      </div>
+
+      <div class="card">
+        <!-- TAB 1 -->
+        <div class="pane active" id="paneList">
+          <div class="sec-title">💭 Tipy na pohlaví</div>
+          <div id="genderList"></div>
+          <div class="sec-title">📝 Tipy na jména</div>
+          <div id="nameList"></div>
+        </div>
+
+        <!-- TAB 2 -->
+        <div class="pane" id="paneCharts">
+          <div class="sec-title">Pohlaví – kluk vs. holka</div>
+          <div class="splitbar"><div class="seg boy" id="segBoy"><span id="segBoyPct"></span></div><div class="seg girl" id="segGirl"><span id="segGirlPct"></span></div></div>
+          <div class="countrow"><span style="color:#3d7fff;">💙 KLUK · <span id="boyCount">0</span></span><span style="color:#ff5e98;"><span id="girlCount">0</span> · HOLKA 💖</span></div>
+
+          <div class="sec-title" style="margin-top:24px;">Poměr hlasů na jména</div>
+          <div class="grid2">
+            <div><div class="sec-title boy" style="margin-top:0;">💙 Klučičí</div><div id="boyChart"></div></div>
+            <div><div class="sec-title girl" style="margin-top:0;">💖 Holčičí</div><div id="girlChart"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+  const SUPABASE_URL = "https://pnartxkzsetuqoltdqpu.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuYXJ0eGt6c2V0dXFvbHRkcXB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NDg3ODMsImV4cCI6MjA5ODIyNDc4M30.hULg5-8I4ZtPzYod1BjDpkRx0ahSvQlNPpAZAGFTEvQ";
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const BOYS  = ['Mattias','Sebastian','Kristian / Christian','Nikolas','Samuel','Teodor','Oliver','Markus'];
+  const GIRLS = ['Laura','Jasmina','Charlotte','Valerie','Elizabeth','Violeta','Emily / Emílie','Klaudie / Claudie','Stella','Amélie','Evelin'];
+
+  const $ = s=>document.querySelector(s);
+  const esc = s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt = iso=>{ try{ const d=new Date(iso); return d.toLocaleString('cs-CZ',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } };
+
+  let PIN = null;
+
+  // login
+  $('#loginBtn').addEventListener('click', login);
+  $('#pin').addEventListener('keydown', e=>{ if(e.key==='Enter') login(); });
+  async function login(){
+    const pin = $('#pin').value.trim();
+    const err = $('#loginErr'); const btn=$('#loginBtn');
+    if(!pin){ err.textContent='Zadej PIN.'; return; }
+    btn.disabled=true; err.textContent='';
+    try{
+      const { data, error } = await supabase.rpc('admin_data', { pin });
+      if(error) throw error;
+      if(data.status==='ok'){ PIN=pin; $('#login').style.display='none'; $('#dash').style.display='block'; render(data); }
+      else if(data.status==='rate_limited'){ err.textContent=`Příliš mnoho pokusů. Zkus to za ${data.retry_after||60} s.`; }
+      else { err.textContent=`Špatný PIN.${data.remaining!=null?' Zbývá pokusů: '+data.remaining:''}`; }
+    }catch(e){ console.error(e); err.textContent='Něco se pokazilo, zkus to znovu.'; }
+    finally{ btn.disabled=false; }
+  }
+
+  // refresh + tabs
+  $('#refreshBtn').addEventListener('click', async ()=>{
+    if(!PIN) return;
+    const { data, error } = await supabase.rpc('admin_data', { pin: PIN });
+    if(!error && data && data.status==='ok') render(data);
+  });
+  document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active'); $('#'+t.dataset.pane).classList.add('active');
+  }));
+
+  function render(d){
+    const total=(d.boy||0)+(d.girl||0);
+    $('#totalLine').textContent = `Celkem hlasů o pohlaví: ${total} · tipů na jména: ${(d.names||[]).length}`;
+
+    // --- TAB 1: kdo jak hlasoval ---
+    const g=d.gender||[];
+    $('#genderList').innerHTML = g.length ? g.map(v=>{
+      const boy=v.choice==='Kluk';
+      return `<div class="row"><span class="who">${esc(v.name)}</span>
+        <span><span class="what ${boy?'boy':'girl'}">${boy?'💙 Kluk':'💖 Holka'}</span><span class="when">${fmt(v.at)}</span></span></div>`;
+    }).join('') : '<div class="muted">Zatím žádné hlasy.</div>';
+
+    const n=d.names||[];
+    $('#nameList').innerHTML = n.length ? n.map(v=>{
+      const boy=v.category==='Kluk';
+      return `<div class="row"><span class="who">${esc(v.voter||'—')}</span>
+        <span><span class="what ${boy?'boy':'girl'}">${esc(v.name)} ${boy?'💙':'💖'}</span><span class="when">${fmt(v.at)}</span></span></div>`;
+    }).join('') : '<div class="muted">Zatím žádné tipy na jména.</div>';
+
+    // --- TAB 2: grafy ---
+    const boyC=d.boy||0, girlC=d.girl||0, tot=boyC+girlC;
+    const bp = tot?Math.round(boyC/tot*100):50, gp = tot?100-bp:50;
+    $('#segBoy').style.width=bp+'%'; $('#segGirl').style.width=gp+'%';
+    $('#segBoyPct').textContent = bp>=14?bp+'%':''; $('#segGirlPct').textContent = gp>=14?gp+'%':'';
+    $('#boyCount').textContent=boyC; $('#girlCount').textContent=girlC;
+
+    chart('#boyChart','boy',BOYS,d.boyNames||{});
+    chart('#girlChart','girl',GIRLS,d.girlNames||{});
+  }
+
+  function chart(sel,cls,names,store){
+    const total=Object.values(store).reduce((a,b)=>a+b,0);
+    const data=names.map(nm=>({name:nm,count:store[nm]||0}))
+      .map(o=>({...o,pct:total?Math.round(o.count/total*100):0}))
+      .sort((a,b)=>b.count-a.count);
+    $(sel).innerHTML = data.map(r=>`
+      <div class="resrow ${cls}">
+        <div class="rlabel"><span>${esc(r.name)}</span><span>${r.pct}% · ${r.count}</span></div>
+        <div class="track"><div class="fill" style="width:${r.pct}%"></div></div>
+      </div>`).join('');
+  }
+</script>
+</body>
+</html>

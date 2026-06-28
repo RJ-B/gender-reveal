@@ -321,8 +321,7 @@
 
   // ====== STAV ======
   const st = { screen:'welcome', voterName:'', pickBoys:[], pickGirls:[], myGender:null, myBoyNames:[], myGirlNames:[] };
-  let votes = [];       // {name, choice}
-  let nameVotes = [];   // {category, name}
+  let agg = { boy:0, girl:0, boyNames:{}, girlNames:{} };  // souhrny ze serveru (bez jmen)
 
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -369,6 +368,7 @@
       const { error } = await supabase.from('votes').insert({ name: st.voterName.trim(), choice });
       if(error) throw error;
     }catch(e){ console.error(e); alert('Hlas se nepodařilo odeslat, zkus to prosím znovu.'); return; }
+    await refresh();
     renderGenderResult();
     show('genderResult');
     const cols = choice==='Kluk' ? ['#6db1ff','#3d7fff','#bcdcff','#ffffff'] : ['#ff9ec4','#ff5e98','#ffd0e2','#ffffff'];
@@ -379,8 +379,8 @@
     $('#myGenderLabel').innerHTML = st.myGender==='Kluk'
       ? '<span style="color:#3d7fff;">KLUK 💙</span>'
       : '<span style="color:#ff5e98;">HOLKA 💖</span>';
-    const boyC = votes.filter(v=>v.choice==='Kluk').length;
-    const girlC = votes.filter(v=>v.choice==='Holka').length;
+    const boyC = agg.boy||0;
+    const girlC = agg.girl||0;
     const tot = boyC+girlC;
     let boyPct = tot ? Math.round(boyC/tot*100) : 50;
     let girlPct = tot ? 100-boyPct : 50;
@@ -417,14 +417,16 @@
   async function submitNames(){
     if(st.pickBoys.length===0 && st.pickGirls.length===0){ $('#nameErr').textContent='Vyber prosím aspoň jedno jméno (klidně víc 🙂).'; return; }
     const btn=$('#submitNamesBtn'); btn.disabled=true;
+    const voter = st.voterName.trim() || null;
     const rows = [
-      ...st.pickBoys.map(n=>({ category:'Kluk',  name:n })),
-      ...st.pickGirls.map(n=>({ category:'Holka', name:n }))
+      ...st.pickBoys.map(n=>({ category:'Kluk',  name:n, voter })),
+      ...st.pickGirls.map(n=>({ category:'Holka', name:n, voter }))
     ];
     try{
       const { error } = await supabase.from('name_votes').insert(rows);
       if(error) throw error;
     }catch(e){ console.error(e); $('#nameErr').textContent='Hlas se nepodařilo odeslat, zkus to znovu.'; btn.disabled=false; return; }
+    await refresh();
     st.myBoyNames=[...st.pickBoys]; st.myGirlNames=[...st.pickGirls];
     const boyTxt = st.myBoyNames.length ? `<span style="color:#3d7fff;">${st.myBoyNames.map(esc).join(', ')}</span>` : '';
     const girlTxt = st.myGirlNames.length ? `<span style="color:#ff5e98;">${st.myGirlNames.map(esc).join(', ')}</span>` : '';
@@ -437,13 +439,12 @@
   }
 
   function renderNameResults(){
-    renderResultCol('#boyResults','boy', BOYS, 'Kluk');
-    renderResultCol('#girlResults','girl', GIRLS, 'Holka');
+    renderResultCol('#boyResults','boy', BOYS, agg.boyNames||{});
+    renderResultCol('#girlResults','girl', GIRLS, agg.girlNames||{});
   }
-  function renderResultCol(sel, cls, names, category){
-    const rows = nameVotes.filter(v=>v.category===category);
-    const total = rows.length;
-    const data = names.map(n=>({ name:n, count: rows.filter(v=>v.name===n).length }))
+  function renderResultCol(sel, cls, names, store){
+    const total = Object.values(store).reduce((a,b)=>a+b,0);
+    const data = names.map(n=>({ name:n, count: store[n]||0 }))
       .map(o=>({ ...o, pct: total ? Math.round(o.count/total*100) : 0 }))
       .sort((a,b)=>b.count-a.count);
     $(sel).innerHTML = data.map(r=>`
@@ -463,35 +464,25 @@
 
   // ---- WELCOME počítadlo ----
   function updateWelcomeNote(){
-    const tot = votes.length;
+    const tot = (agg.boy||0)+(agg.girl||0);
     const note=$('#welcomeNote');
     if(tot>0){ note.style.display=''; note.textContent=`Zatím hlasovalo ${tot} ${tot===1?'člověk':(tot<5?'lidi':'lidí')}`; }
     else note.style.display='none';
   }
 
-  // ---- DATA + REALTIME ----
-  async function loadAll(){
-    const [g,n] = await Promise.all([
-      supabase.from('votes').select('name,choice'),
-      supabase.from('name_votes').select('category,name')
-    ]);
-    if(!g.error && g.data) votes = g.data;
-    if(!n.error && n.data) nameVotes = n.data;
-    refreshCurrent();
+  // ---- DATA (jen souhrny ze serveru, bez jmen) ----
+  async function refresh(){
+    const { data, error } = await supabase.rpc('get_results');
+    if(!error && data){ agg = data; refreshCurrent(); }
   }
   function refreshCurrent(){
     updateWelcomeNote();
     if(st.screen==='genderResult') renderGenderResult();
     if(st.screen==='nameResult') renderNameResults();
   }
-  loadAll();
-
-  supabase.channel('votes-live')
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'votes'},
-      p=>{ votes.push(p.new); refreshCurrent(); }).subscribe();
-  supabase.channel('names-live')
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'name_votes'},
-      p=>{ nameVotes.push(p.new); refreshCurrent(); }).subscribe();
+  refresh();
+  // živé výsledky bez úniku jmen: krátký polling, když jsme na obrazovce s výsledky
+  setInterval(()=>{ if(['welcome','genderResult','nameResult'].includes(st.screen)) refresh(); }, 4000);
 
   // ---- ODPOČET + ODEMČENÍ ODHALENÍ ----
   const pad=n=>String(n).padStart(2,'0');
