@@ -256,7 +256,7 @@
   <!-- NAME VOTE -->
   <section class="screen" id="scNameVote" style="max-width:720px;">
     <h2 class="center">Vyber jméno pro miminko</h2>
-    <p class="lead center">Jeden tip pro kluka a jeden pro holku 💭</p>
+    <p class="lead center">Můžeš vybrat klidně víc jmen – pro kluka i pro holku 💭</p>
     <div class="namecols">
       <div class="namebox boy">
         <h3>💙 Kdyby kluk</h3>
@@ -320,7 +320,7 @@
   const REVEAL_DATE = new Date("2026-08-31T17:00:00");
 
   // ====== STAV ======
-  const st = { screen:'welcome', voterName:'', pickBoy:null, pickGirl:null, myGender:null, myBoyName:null, myGirlName:null };
+  const st = { screen:'welcome', voterName:'', pickBoys:[], pickGirls:[], myGender:null, myBoyNames:[], myGirlNames:[] };
   let votes = [];       // {name, choice}
   let nameVotes = [];   // {category, name}
 
@@ -395,37 +395,41 @@
   // ---- NAME VOTE ----
   $('#goNameBtn').addEventListener('click', ()=>{ buildChips(); show('nameVote'); });
 
+  function toggle(arr, n){ const i=arr.indexOf(n); if(i>=0) arr.splice(i,1); else arr.push(n); }
   function buildChips(){
     const boyBox=$('#boyChips'), girlBox=$('#girlChips');
     boyBox.innerHTML=''; girlBox.innerHTML='';
     BOYS.forEach(n=>{
       const b=document.createElement('button');
-      b.className='chip boy'+(st.pickBoy===n?' sel':''); b.textContent=n;
-      b.addEventListener('click',()=>{ st.pickBoy=n; $('#nameErr').textContent=''; buildChips(); });
+      b.className='chip boy'+(st.pickBoys.includes(n)?' sel':''); b.textContent=n;
+      b.addEventListener('click',()=>{ toggle(st.pickBoys,n); $('#nameErr').textContent=''; buildChips(); });
       boyBox.appendChild(b);
     });
     GIRLS.forEach(n=>{
       const b=document.createElement('button');
-      b.className='chip girl'+(st.pickGirl===n?' sel':''); b.textContent=n;
-      b.addEventListener('click',()=>{ st.pickGirl=n; $('#nameErr').textContent=''; buildChips(); });
+      b.className='chip girl'+(st.pickGirls.includes(n)?' sel':''); b.textContent=n;
+      b.addEventListener('click',()=>{ toggle(st.pickGirls,n); $('#nameErr').textContent=''; buildChips(); });
       girlBox.appendChild(b);
     });
   }
 
   $('#submitNamesBtn').addEventListener('click', submitNames);
   async function submitNames(){
-    if(!st.pickBoy || !st.pickGirl){ $('#nameErr').textContent='Vyber prosím jedno jméno pro kluka i pro holku.'; return; }
+    if(st.pickBoys.length===0 && st.pickGirls.length===0){ $('#nameErr').textContent='Vyber prosím aspoň jedno jméno (klidně víc 🙂).'; return; }
     const btn=$('#submitNamesBtn'); btn.disabled=true;
+    const rows = [
+      ...st.pickBoys.map(n=>({ category:'Kluk',  name:n })),
+      ...st.pickGirls.map(n=>({ category:'Holka', name:n }))
+    ];
     try{
-      const { error } = await supabase.from('name_votes').insert([
-        { category:'Kluk',  name: st.pickBoy },
-        { category:'Holka', name: st.pickGirl }
-      ]);
+      const { error } = await supabase.from('name_votes').insert(rows);
       if(error) throw error;
     }catch(e){ console.error(e); $('#nameErr').textContent='Hlas se nepodařilo odeslat, zkus to znovu.'; btn.disabled=false; return; }
-    st.myBoyName=st.pickBoy; st.myGirlName=st.pickGirl;
-    $('#myNamesLine').innerHTML = `Díky za hlas, ${esc(st.voterName.trim())}! Tvoje tipy: `+
-      `<span style="color:#3d7fff;">${esc(st.myBoyName)}</span> · <span style="color:#ff5e98;">${esc(st.myGirlName)}</span>`;
+    st.myBoyNames=[...st.pickBoys]; st.myGirlNames=[...st.pickGirls];
+    const boyTxt = st.myBoyNames.length ? `<span style="color:#3d7fff;">${st.myBoyNames.map(esc).join(', ')}</span>` : '';
+    const girlTxt = st.myGirlNames.length ? `<span style="color:#ff5e98;">${st.myGirlNames.map(esc).join(', ')}</span>` : '';
+    const sep = (boyTxt && girlTxt) ? ' · ' : '';
+    $('#myNamesLine').innerHTML = `Díky za hlas, ${esc(st.voterName.trim())}! Tvoje tipy: ${boyTxt}${sep}${girlTxt}`;
     renderNameResults();
     show('nameResult');
     setTimeout(()=>launchConfetti(['#6db1ff','#3d7fff','#ff9ec4','#ff5e98','#ffd86b','#9be8a8']), 80);
@@ -451,7 +455,7 @@
 
   // ---- RESTART ----
   $('#restartBtn').addEventListener('click', ()=>{
-    st.voterName=''; st.pickBoy=null; st.pickGirl=null; st.myGender=null; st.myBoyName=null; st.myGirlName=null;
+    st.voterName=''; st.pickBoys=[]; st.pickGirls=[]; st.myGender=null; st.myBoyNames=[]; st.myGirlNames=[];
     nameInput.value=''; $('#welcomeErr').textContent=''; $('#nameErr').textContent='';
     updateWelcomeNote();
     show('welcome');
