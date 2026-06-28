@@ -12,13 +12,9 @@ create table if not exists public.votes (
 -- 2) Zapnout Row Level Security
 alter table public.votes enable row level security;
 
--- 3) Anon NESMÍ číst surová data (jména hlasujících) – jen přidat hlas.
---    Veřejná stránka čte pouze SOUHRNY přes funkci get_results() (viz níže),
---    kompletní data se jmény jen admin přes admin_data(pin).
-create policy "verejne_vkladani"
-  on public.votes for insert
-  to anon
-  with check (true);
+-- 3) Anon nemá ŽÁDNÝ přímý přístup (čtení ani zápis).
+--    Zápis jde JEN přes submit_ballot() (kompletní hlas = pohlaví + jména najednou),
+--    čtení jen přes souhrny get_results() / admin admin_data(pin). (vše níže)
 
 -- ============================================================
 -- 2. kolo: hlasování o oblíbenosti jména
@@ -31,8 +27,27 @@ create table if not exists public.name_votes (
   created_at  timestamptz not null default now()
 );
 alter table public.name_votes enable row level security;
--- anon smí jen vkládat (čtení jen přes souhrny / admin)
-create policy "names_verejne_vkladani" on public.name_votes for insert to anon with check (true);
+-- žádná anon práva – zápis jen přes submit_ballot(), čtení přes souhrny/admin
+
+-- Atomické odeslání celého hlasu (pohlaví + jména) – uloží se VŠE najednou.
+-- Tím nejde uložit jen pohlaví bez jmen (když někdo vyklikne před jmény).
+create or replace function public.submit_ballot(p_voter text, p_choice text, p_boys text[], p_girls text[])
+returns void language plpgsql security definer set search_path = public as $$
+declare v text := trim(coalesce(p_voter,''));
+begin
+  if length(v) < 2 then raise exception 'voter required'; end if;
+  if p_choice not in ('Kluk','Holka') then raise exception 'bad choice'; end if;
+  if array_length(p_boys,1) is null or array_length(p_girls,1) is null then
+    raise exception 'need at least one boy and one girl name';
+  end if;
+  insert into votes(name, choice) values (v, p_choice);
+  insert into name_votes(category, name, voter)
+    select 'Kluk', x, v from unnest(p_boys) x
+    union all
+    select 'Holka', x, v from unnest(p_girls) x;
+end; $$;
+revoke all on function public.submit_ballot(text,text,text[],text[]) from public;
+grant execute on function public.submit_ballot(text,text,text[],text[]) to anon;
 
 -- ============================================================
 -- Skutečný výsledek (spoiler-proof) – vydá se až po čase odhalení

@@ -367,11 +367,8 @@
     $('#jokeMsg').textContent = jokeLines[Math.floor(Math.random()*jokeLines.length)];
   });
   async function voteGender(choice){
+    // POZOR: tip na pohlaví se zatím NEUKLÁDÁ – uloží se až s jmény (submitNames)
     st.myGender = choice;
-    try{
-      const { error } = await supabase.from('votes').insert({ name: st.voterName.trim(), choice });
-      if(error) throw error;
-    }catch(e){ console.error(e); alert('Hlas se nepodařilo odeslat, zkus to prosím znovu.'); return; }
     await refresh();
     renderGenderResult();
     show('genderResult');
@@ -421,13 +418,14 @@
   async function submitNames(){
     if(st.pickBoys.length===0 || st.pickGirls.length===0){ $('#nameErr').textContent='Vyber prosím aspoň jedno jméno pro kluka i pro holku.'; return; }
     const btn=$('#submitNamesBtn'); btn.disabled=true;
-    const voter = st.voterName.trim() || null;
-    const rows = [
-      ...st.pickBoys.map(n=>({ category:'Kluk',  name:n, voter })),
-      ...st.pickGirls.map(n=>({ category:'Holka', name:n, voter }))
-    ];
     try{
-      const { error } = await supabase.from('name_votes').insert(rows);
+      // uloží VŠECHNO najednou (pohlaví + jména) – atomicky na serveru
+      const { error } = await supabase.rpc('submit_ballot', {
+        p_voter: st.voterName.trim(),
+        p_choice: st.myGender,
+        p_boys: st.pickBoys,
+        p_girls: st.pickGirls
+      });
       if(error) throw error;
     }catch(e){ console.error(e); $('#nameErr').textContent='Hlas se nepodařilo odeslat, zkus to znovu.'; btn.disabled=false; return; }
     await refresh();
